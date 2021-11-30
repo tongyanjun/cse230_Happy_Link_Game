@@ -19,13 +19,13 @@ In a limited time, as long as you find all the same letters that can be connecte
  
 ## Architecture
 #### print_the_game:
-This API is the outer monad to print the current game status to the terminal. It will include the board with existing letters and eliminated ones replaced by specific symbols. It will also print the remain time and some hint information such as the “Invalid” message will you choose two letters not able to be linked. It will also contain some interactive functions.
+This API is the outer monad to print the current game status to the terminal. It will include the board with existing letters and eliminated ones replaced by specific symbols. It will also print the remaining time and some hint information such as the “Invalid” message when a player choose two letters not valid to link. It will also contain some interactive functions.
 
 #### check_linkable:
 This is one of the most significant logic in our project that will decide whether two remaining letters on the board can be linked or not. 
 
 #### hint:
-This API will randomly give a pair of letters which can be linked on current board. The function will be mainly built based on the check_linkable function. The API will be called by other functions or by the player when they click the “hint” bottom.
+This API will randomly give a pair of letters which can be linked on current board. The function will be mainly built based on the check_linkable function. The API will be called by other functions or by the player when they click the “hint” botton.
 
 #### shuffle:
 This API is aimed to shuffle the remaining letters on the board when no two letters on the board can be linked. The function will be implemented based on “hint” function and will be automatically triggered when the game is “dead”. Player cannot shuffle the board intentionally. The shuffle will only change the relative position of different letters, the “dead place” will not be moved.
