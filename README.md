@@ -31,7 +31,7 @@ This API will randomly give a pair of letters which can be linked on current boa
 This API is aimed to shuffle the remaining letters on the board when no two letters on the board can be linked. The function will be implemented based on “hint” function and will be automatically triggered when the game is “dead”. Player cannot shuffle the board intentionally. The shuffle will only change the relative position of different letters, the “dead place” will not be moved.
 
 #### change_board:
-This API is an intermediate function that will change our inner date structures. It will bridge our inner decision making logic and our print out API.
+This API is an intermediate function that will change our inner data structures. It will bridge our inner decision making logic and our print out API.
 
 ## Challege:
 + The implementation of the game logic is a little bit complicated. We searched some reference materials to design a relatively efficient algorithm and then implemented the functions in Haskell step by step.
