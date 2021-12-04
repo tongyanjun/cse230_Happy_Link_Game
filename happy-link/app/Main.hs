@@ -1,10 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Lib
-import Brick
-
-ui :: Widget ()
-ui = str "Hello, world!"
+import qualified UI as U
 
 main :: IO ()
-main = simpleMain ui
+main = U.main
