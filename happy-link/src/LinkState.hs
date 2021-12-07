@@ -9,13 +9,20 @@ module LinkState
   , Game(..)
   , Direction(..)
   , dead, food, score, snake, blocks
+  , focusRing, pos_x1, pos_y1, pos_x2, pos_y2
   , height, width
+  , Name(..)
   ) where
 
 import Data.Array.IO
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Maybe (fromMaybe)
+
+import qualified Brick.Widgets.Edit as E
+import qualified Brick.AttrMap as A
+import qualified Brick.Focus as F
+import Brick.Util (on)
 
 import Control.Lens hiding ((<|), (|>), (:>), (:<))
 import Control.Monad.Trans.Maybe
@@ -28,6 +35,12 @@ import System.Random (Random(..), newStdGen, randomRIO)
 
 -- Types
 
+data Name = PosX1
+          | PosY1
+          | PosX2
+          | PosY2
+          deriving (Ord, Show, Eq)
+
 data Game = Game
   { _snake  :: Snake        -- ^ snake as a sequence of points in N2
   , _dir    :: Direction    -- ^ direction
@@ -38,7 +51,14 @@ data Game = Game
   , _score  :: Int          -- ^ score
   , _locked :: Bool         -- ^ lock to disallow duplicate turns between time steps
   , _blocks :: [Char]
-  } deriving (Show)
+  , _input  :: Bool
+  , _focusRing :: F.FocusRing Name
+  , _pos_x1 :: E.Editor String Name
+  , _pos_y1 :: E.Editor String Name
+  , _pos_x2 :: E.Editor String Name
+  , _pos_y2 :: E.Editor String Name
+  -- } deriving (Show)
+  }
 
 type Coord = V2 Int
 
@@ -161,6 +181,11 @@ initGame = do
         , _paused = True
         , _locked = False
         , _blocks = blocks
+        , _focusRing = F.focusRing [PosX1, PosY1, PosX2, PosY2]
+        , _pos_x1 = E.editor PosX1 (Just 2) ""
+        , _pos_y1 = E.editor PosY1 (Just 2) ""
+        , _pos_x2 = E.editor PosX2 (Just 2) ""
+        , _pos_y2 = E.editor PosY2 (Just 2) ""
         }
   return $ execState nextFood g
 
