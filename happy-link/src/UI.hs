@@ -103,7 +103,9 @@ handleEvent g (VtyEvent ev) =
         V.EvKey V.KEsc [] -> halt g
         V.EvKey (V.KChar '\t') [] -> continue $ g & focusRing %~ F.focusNext
         V.EvKey V.KBackTab [] -> continue $ g & focusRing %~ F.focusPrev
-        V.EvKey V.KEnter [] -> continue $ g & focusRing %~ F.focusNext
+        V.EvKey V.KUp [] -> continue $ g & focusRing %~ F.focusPrev
+        V.EvKey V.KDown [] -> continue $ g & focusRing %~ F.focusNext
+        -- V.EvKey V.KEnter [] -> continue $ g & focusRing %~ F.focusNext
 
         _ -> continue =<< case F.focusGetCurrent (g^.focusRing) of
                Just PosX1 -> T.handleEventLensed g pos_x1 E.handleEditorEvent ev
@@ -139,9 +141,15 @@ drawUI g =
     
 
 drawInput :: Game -> Widget Name
-drawInput g = hLimit 15
-  $ vBox [ hLimit 30 (vLimit 5 px1) , hLimit 30 (vLimit 5 py1)
-         , hLimit 30 (vLimit 5 px2) , hLimit 30 (vLimit 5 py2)
+drawInput g = hLimit 20
+  $ withBorderStyle BS.unicodeBold
+  $ B.borderWithLabel (str "Position")
+  $ C.hCenter
+  $ padAll 1
+  $ vBox [ str "X of Pos1: " <+> hLimit 30 (vLimit 5 px1)
+         , str "Y of Pos1: " <+> hLimit 30 (vLimit 5 py1)
+         , str "X of Pos2: " <+> hLimit 30 (vLimit 5 px2)
+         , str "Y of Pos2: " <+> hLimit 30 (vLimit 5 py2)
          ]
   where
     px1 = F.withFocusRing (g ^. focusRing) (E.renderEditor (str . unlines)) (g ^. pos_x1)
