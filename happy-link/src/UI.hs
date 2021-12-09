@@ -100,12 +100,17 @@ handleEvent g (AppEvent Tick)                       = continue $ step g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'j') [])) = continue $ turn South g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = continue $ turn East g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'h') [])) = continue $ g & score .~ (read (unlines $ E.getEditContents $ g^.pos_x1)::Int)
-handleEvent g (T.MouseDown n _ _ loc) = continue $ g & lastReportedClick .~ Just (n, loc)
+handleEvent g (T.MouseDown n _ _ (T.Location l)) = 
+  case g^.lastReportedClick of
+    Nothing -> continue $ g & lastReportedClick .~ Just (n, T.Location l)
+    Just (name, T.Location last_l) -> do
+      let g_new = link l last_l g
+      continue $ g_new & lastReportedClick .~ Nothing
 -- handleEvent g T.MouseUp {} = continue $ g & lastReportedClick .~ Nothing
 -- handleEvent g (VtyEvent (V.EvMouseDown col row button mods)) = continue $ g & click_pos .~ Just (col, row)
 -- handleEvent g (VtyEvent V.EvMouseUp {}) = continue $ g & lastReportedClick .~ Nothing
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'r') [])) = liftIO (initGame) >>= continue
-handleEvent g (VtyEvent (V.EvKey (V.KChar 't') [])) = continue $ eliminate g
+-- handleEvent g (VtyEvent (V.EvKey (V.KChar 't') [])) = continue $ eliminate g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc []))        = halt g
 handleEvent g (VtyEvent ev) =
@@ -212,12 +217,12 @@ drawGrid g = withBorderStyle BS.unicodeBold
     drawCoord    = drawCell . cellAt
     cellAt c     = do
       case g ^. lastReportedClick of
-            Nothing -> Bg $ (g ^. blocks) !! ((c ^._x) * width + (c ^._y))
+            Nothing -> Bg $ (g ^. cells) !! (c ^._x) !! (c ^._y)
             Just (name, T.Location l)  -> do
               if (((fst l - 1) `div` 3) == (c ^._x)) && (height - (snd l) - 1 == (c ^._y)) then
-                Fg $ (g ^. blocks) !! ((c ^._x) * width + (c ^._y))
+                Fg $ (g ^. cells) !! (c ^._x) !! (c ^._y)
               else
-                Bg $ (g ^. blocks) !! ((c ^._x) * width + (c ^._y))
+                Bg $ (g ^. cells) !! (c ^._x) !! (c ^._y)
 
 
 drawCell :: Cell -> Widget Name
