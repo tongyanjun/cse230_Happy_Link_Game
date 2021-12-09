@@ -10,6 +10,7 @@ module LinkState
   , Direction(..)
   , dead, food, score, snake, blocks
   , focusRing, pos_x1, pos_y1, pos_x2, pos_y2
+  , lastReportedClick, click_pos
   , height, width
   , Name(..)
   ) where
@@ -22,6 +23,7 @@ import Data.Maybe (fromMaybe)
 import qualified Brick.Widgets.Edit as E
 import qualified Brick.AttrMap as A
 import qualified Brick.Focus as F
+import qualified Brick.Types as T
 import Brick.Util (on)
 
 import Control.Lens hiding ((<|), (|>), (:>), (:<))
@@ -39,6 +41,7 @@ data Name = PosX1
           | PosY1
           | PosX2
           | PosY2
+          | Board
           deriving (Ord, Show, Eq)
 
 data Game = Game
@@ -57,6 +60,8 @@ data Game = Game
   , _pos_y1 :: E.Editor String Name
   , _pos_x2 :: E.Editor String Name
   , _pos_y2 :: E.Editor String Name
+  , _lastReportedClick :: Maybe (Name, T.Location)
+  , _click_pos :: Maybe (Int, Int)
   -- } deriving (Show)
   }
 
@@ -148,6 +153,13 @@ turnDir n c | c `elem` [North, South] && n `elem` [East, West] = n
             | c `elem` [East, West] && n `elem` [North, South] = n
             | otherwise = c
 
+isLinkable :: [[Char]] -> Int -> Int -> Int -> Int -> Bool
+isLinkable _ _ _ _ _ = True
+
+-- link :: Game -> Game
+-- link Game {} = do
+--   if isLinkable g
+
 shuffle :: [a] -> IO [a]
 shuffle xs = do
         ar <- newArray n xs
@@ -186,6 +198,8 @@ initGame = do
         , _pos_y1 = E.editor PosY1 (Just 2) ""
         , _pos_x2 = E.editor PosX2 (Just 2) ""
         , _pos_y2 = E.editor PosY2 (Just 2) ""
+        , _lastReportedClick = Nothing
+        , _click_pos = Nothing
         }
   return $ execState nextFood g
 

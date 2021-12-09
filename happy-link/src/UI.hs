@@ -16,6 +16,7 @@ import Brick
   , padRight, padLeft, padTop, padAll, Padding(..)
   , withBorderStyle
   , str
+  , lookupExtent
   , attrMap, withAttr, emptyWidget, AttrName, on, fg
   , (<+>)
   )
@@ -34,6 +35,8 @@ import Brick.Widgets.Core
   , hLimit
   , vLimit
   , str
+  , clickable
+  , withDefAttr
   )
 import qualified Graphics.Vty as V
 import Data.Sequence (Seq)
@@ -56,7 +59,7 @@ data Tick = Tick
 -- if we call this "Name" now.
 -- type Name = ()
 
-data Cell = Snake | Food | Empty | Bg Char
+data Cell = Snake | Food | Empty | Bg Char | Fg Char
 
 -- App definition
 
@@ -78,7 +81,10 @@ main = do
     writeBChan chan Tick
     threadDelay 100000 -- decides how fast your game moves
   g <- initGame
-  let buildVty = V.mkVty V.defaultConfig
+  let buildVty = do
+          v <- V.mkVty =<< V.standardIOConfig
+          V.setMode (V.outputIface v) V.Mouse True
+          return v
   initialVty <- buildVty
   void $ customMain initialVty buildVty (Just chan) app g
 
@@ -93,7 +99,11 @@ handleEvent g (AppEvent Tick)                       = continue $ step g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'k') [])) = continue $ turn North g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'j') [])) = continue $ turn South g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = continue $ turn East g
--- handleEvent g (VtyEvent (V.EvKey (V.KChar 'h') [])) = continue $ turn West g
+-- handleEvent g (VtyEvent (V.EvKey (V.KChar 'h') [])) = continue $ g & score .~ (read (unlines $ E.getEditContents $ g^.pos_x1)::Int)
+handleEvent g (T.MouseDown n _ _ loc) = continue $ g & lastReportedClick .~ Just (n, loc)
+-- handleEvent g T.MouseUp {} = continue $ g & lastReportedClick .~ Nothing
+-- handleEvent g (VtyEvent (V.EvMouseDown col row button mods)) = continue $ g & click_pos .~ Just (col, row)
+-- handleEvent g (VtyEvent V.EvMouseUp {}) = continue $ g & lastReportedClick .~ Nothing
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'r') [])) = liftIO (initGame) >>= continue
 handleEvent g (VtyEvent (V.EvKey (V.KChar 't') [])) = continue $ eliminate g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
@@ -138,7 +148,6 @@ handleEvent g _                                     = continue g
 drawUI :: Game -> [Widget Name]
 drawUI g =
   [ C.center $ padRight (Pad 2) (drawStats g) <+> drawGrid g <+> drawInput g]
-    
 
 drawInput :: Game -> Widget Name
 drawInput g = hLimit 20
@@ -158,10 +167,15 @@ drawInput g = hLimit 20
     py2 = F.withFocusRing (g ^. focusRing) (E.renderEditor (str . unlines)) (g ^. pos_y2)
 
 drawStats :: Game -> Widget Name
-drawStats g = hLimit 11
+drawStats g = hLimit 30
   $ vBox [ drawScore (g ^. score) -- getter
          , padTop (Pad 2) $ drawGameOver (g ^. dead)
+         , drawOutput msg
          ]
+  where
+    msg = case g ^. lastReportedClick of
+            Nothing -> "nothing"
+            Just (name, T.Location l)  -> show name <> " at " <> show l
 
 drawScore :: Int -> Widget Name
 drawScore n = withBorderStyle BS.unicodeBold
@@ -169,6 +183,13 @@ drawScore n = withBorderStyle BS.unicodeBold
   $ C.hCenter
   $ padAll 1
   $ str $ show n
+
+drawOutput :: [Char] -> Widget Name
+drawOutput s = withBorderStyle BS.unicodeBold
+  $ B.borderWithLabel (str "Output")
+  $ C.hCenter
+  $ padAll 1
+  $ str s
 
 drawGameOver :: Bool -> Widget Name
 drawGameOver dead =
@@ -183,21 +204,28 @@ gameOverAttr = "gameOver"
 drawGrid :: Game -> Widget Name
 drawGrid g = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "Happy Link")
+  $ clickable Board
   $ vBox rows
   where
     rows         = [hBox $ cellsInRow r | r <- [height-1,height-2..0]]
     cellsInRow y = [drawCoord (V2 x y) | x <- [0..width-1]]
     drawCoord    = drawCell . cellAt
-    cellAt c
-      -- | c `elem` g ^. snake = Snake
-      -- | c == g ^. food      = Food
-      | otherwise           = Bg $ (g ^. blocks) !! ((c ^._x) * width + (c ^._y))
+    cellAt c     = do
+      case g ^. lastReportedClick of
+            Nothing -> Bg $ (g ^. blocks) !! ((c ^._x) * width + (c ^._y))
+            Just (name, T.Location l)  -> do
+              if (((fst l - 1) `div` 3) == (c ^._x)) && (height - (snd l) - 1 == (c ^._y)) then
+                Fg $ (g ^. blocks) !! ((c ^._x) * width + (c ^._y))
+              else
+                Bg $ (g ^. blocks) !! ((c ^._x) * width + (c ^._y))
+
 
 drawCell :: Cell -> Widget Name
 drawCell Snake = withAttr snakeAttr cw1
 drawCell Food  = withAttr foodAttr cw1
 drawCell Empty = withAttr emptyAttr cw1
 drawCell (Bg c) = withAttr bgAttr $ cw c
+drawCell (Fg c) = withAttr fgAttr $ cw c
 
 cw :: Char -> Widget Name
 cw c = str $ if c == ' ' then "   " else " " ++ (c : " ")
@@ -205,17 +233,19 @@ cw c = str $ if c == ' ' then "   " else " " ++ (c : " ")
 cw1 :: Widget Name
 cw1 = str "   "
 
-snakeAttr, foodAttr, emptyAttr, bgAttr :: AttrName
+snakeAttr, foodAttr, emptyAttr, bgAttr, fgAttr :: AttrName
 snakeAttr = "snakeAttr"
 foodAttr = "foodAttr"
 emptyAttr = "emptyAttr"
 bgAttr = "bgAttr"
+fgAttr = "fgAttr"
 
 theMap :: AttrMap
 theMap = attrMap V.defAttr
   [ (snakeAttr, V.blue `on` V.blue)
   , (foodAttr, V.red `on` V.red)
   , (gameOverAttr, fg V.red `V.withStyle` V.bold)
+  , (fgAttr,            V.black `on` V.white)
   , (E.editAttr,                   V.white `on` V.black)
   , (E.editFocusedAttr,            V.black `on` V.white)
   ]
