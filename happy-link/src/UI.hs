@@ -89,6 +89,8 @@ main = do
   void $ customMain initialVty buildVty (Just chan) app g
 
 -- Handling events
+transformCoord :: (Int, Int) -> (Int, Int)
+transformCoord (x, y) = (y, (x-1) `div` 3)
 
 handleEvent :: Game -> BrickEvent Name Tick -> EventM Name (Next Game)
 handleEvent g (AppEvent Tick)                       = continue $ step g
@@ -100,12 +102,10 @@ handleEvent g (AppEvent Tick)                       = continue $ step g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'j') [])) = continue $ turn South g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = continue $ turn East g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'h') [])) = continue $ g & score .~ (read (unlines $ E.getEditContents $ g^.pos_x1)::Int)
-handleEvent g (T.MouseDown n _ _ (T.Location l)) = 
+handleEvent g (T.MouseDown n _ _ (T.Location l)) =
   case g^.lastReportedClick of
-    Nothing -> continue $ g & lastReportedClick .~ Just (n, T.Location l)
-    Just (name, T.Location last_l) -> do
-      let g_new = link l last_l g
-      continue $ g_new & lastReportedClick .~ Nothing
+    Nothing -> continue $ g & lastReportedClick .~ Just (n, T.Location (transformCoord l))
+    Just (name, T.Location last_l) -> continue $ link (transformCoord l) last_l g & lastReportedClick .~ Nothing
 -- handleEvent g T.MouseUp {} = continue $ g & lastReportedClick .~ Nothing
 -- handleEvent g (VtyEvent (V.EvMouseDown col row button mods)) = continue $ g & click_pos .~ Just (col, row)
 -- handleEvent g (VtyEvent V.EvMouseUp {}) = continue $ g & lastReportedClick .~ Nothing
@@ -217,12 +217,12 @@ drawGrid g = withBorderStyle BS.unicodeBold
     drawCoord    = drawCell . cellAt
     cellAt c     = do
       case g ^. lastReportedClick of
-            Nothing -> Bg $ (g ^. cells) !! (c ^._x) !! (c ^._y)
+            Nothing -> Bg $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
             Just (name, T.Location l)  -> do
-              if (((fst l - 1) `div` 3) == (c ^._x)) && (height - (snd l) - 1 == (c ^._y)) then
-                Fg $ (g ^. cells) !! (c ^._x) !! (c ^._y)
+              if (snd l == (c ^._x)) && (fst l == (height - c ^._y - 1)) then
+                Fg $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
               else
-                Bg $ (g ^. cells) !! (c ^._x) !! (c ^._y)
+                Bg $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
 
 
 drawCell :: Cell -> Widget Name

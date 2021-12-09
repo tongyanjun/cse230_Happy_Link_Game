@@ -8,12 +8,12 @@ module LinkState
   -- , eliminate
   , Game(..)
   , Direction(..)
-  , dead, food, score, snake, cells
+  , dead, food, score, snake, cells, info, linkable
   , focusRing, pos_x1, pos_y1, pos_x2, pos_y2
   , lastReportedClick
   , height, width
   , Name(..)
-  , link
+  , link, isLinkable
   ) where
 
 import Data.Array.IO
@@ -64,6 +64,7 @@ data Game = Game
   , _pos_y2 :: E.Editor String Name
   , _lastReportedClick :: Maybe (Name, T.Location)
   , _linkable :: Bool
+  , _info :: [Char]
   -- } deriving (Show)
   }
 
@@ -86,8 +87,8 @@ makeLenses ''Game
 -- Constants
 
 height, width :: Int
-height = 10
-width = 10
+height = 4
+width = 4
 
 -- Functions
 
@@ -159,24 +160,25 @@ replaceAtIndex :: Int -> a -> [a] -> [a]
 replaceAtIndex n item ls = a ++ (item:b) where (a, (_:b)) = splitAt n ls
 
 link :: (Int, Int) -> (Int, Int) -> Game -> Game
-link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _score = s} = do
-  let x1Trans = x1 `div` 3
-  let y1Trans = height - y1 - 1
-  let x2Trans = x2 `div` 3
-  let y2Trans = height - y2 - 1
-  if isLinkable cells_old x1Trans y1Trans x2Trans y2Trans then do
-    let x1Row = cells_old !! max 0 x1Trans
-    let cells_tmp = replaceAtIndex y1Trans ' ' x1Row
-    let cells_new_1 = replaceAtIndex x1Trans cells_tmp cells_old
-    let x2Row = cells_new_1 !! max 0 x2Trans
-    let cells_tmp_2 = replaceAtIndex y2Trans ' ' x2Row
-    let cells_new_2 = replaceAtIndex x2Trans cells_tmp_2 cells_new_1
+link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _score = s}
+  | not (isLinkable cells_old x1 y1 x2 y2) = g
+  | otherwise = do
+    let x1Row = cells_old !! x1
+    -- let cells_tmp = replaceAtIndex y1 ' ' x1Row
+    let cells_tmp = x1Row & element y1 .~ ' '
+    -- let cells_new_1 = replaceAtIndex x1 cells_tmp cells_old
+    let cells_new_1 = cells_old & element x1 .~ cells_tmp
+    let x2Row = cells_new_1 !! x2
+    let cells_tmp_2 = x2Row & element y2 .~ ' '
+    let cells_new_2 = cells_new_1 & element x2 .~ cells_tmp_2
     let s_new = s + 1
     g & cells .~ cells_new_2
       & score .~ s_new
-      & linkable .~ True
-  else
-    g & linkable .~ False
+  -- let g_new = g & linkable .~ linked
+    --   & linkable .~ True
+    -- g
+  -- else
+  --   g
 
 shuffle :: [a] -> IO [a]
 shuffle xs = do
@@ -200,10 +202,11 @@ initGame :: IO Game
 initGame = do
   (f :| fs) <- fromList . randomRs (V2 0 0, V2 (width - 1) (height - 1)) <$> newStdGen
   rb <- randomRs ('A', 'Z') <$> newStdGen
-  let b = take (width * height) rb
+  let b = take (quot (width * height) 2) rb
+  blocks <- shuffle $ b ++ b
   let from_list = iterate (width+) 0
-  let rb_list = map (dropFrom rb) from_list
-  let cells = map (take width) rb_list
+  let rb_list = map (dropFrom blocks) from_list
+  let cells = take height (map (take width) rb_list)
   -- blocks <- shuffle b
   let xm = width `div` 2
       ym = height `div` 2
@@ -217,7 +220,8 @@ initGame = do
         , _paused = True
         , _locked = False
         -- , _blocks = blocks
-        , _cells  = cells
+        -- , _cells  = [[' ',' ',' ',' '],[' ',' ',' ',' '],['O',' ',' ',' '],['B','O','B',' ']]
+        , _cells = cells
         , _focusRing = F.focusRing [PosX1, PosY1, PosX2, PosY2]
         , _pos_x1 = E.editor PosX1 (Just 2) ""
         , _pos_y1 = E.editor PosY1 (Just 2) ""
@@ -225,6 +229,7 @@ initGame = do
         , _pos_y2 = E.editor PosY2 (Just 2) ""
         , _lastReportedClick = Nothing
         , _linkable = False
+        , _info = "no"
         }
   return $ execState nextFood g
 
