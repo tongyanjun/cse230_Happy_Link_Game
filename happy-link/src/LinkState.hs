@@ -14,6 +14,7 @@ module LinkState
   , height, width
   , Name(..)
   , link, isLinkable
+  , shuffleGame
   ) where
 
 import Data.Array.IO
@@ -54,7 +55,7 @@ data Game = Game
   , _paused :: Bool         -- ^ paused flag
   , _score  :: Int          -- ^ score
   , _locked :: Bool         -- ^ lock to disallow duplicate turns between time steps
-  -- , _blocks :: [Char]
+  , _blocks :: [Char]
   , _cells  :: [[Char]]
   , _input  :: Bool
   , _focusRing :: F.FocusRing Name
@@ -87,8 +88,8 @@ makeLenses ''Game
 -- Constants
 
 height, width :: Int
-height = 4
-width = 4
+height = 10
+width = 10
 
 -- Functions
 
@@ -160,17 +161,23 @@ replaceAtIndex :: Int -> a -> [a] -> [a]
 replaceAtIndex n item ls = a ++ (item:b) where (a, (_:b)) = splitAt n ls
 
 link :: (Int, Int) -> (Int, Int) -> Game -> Game
-link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _score = s}
+link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _blocks = blocks_old, _score = s}
   | isLinkable cells_old x1 y1 x2 y2 = do
-    let x1Row = cells_old !! x1
-    let cells_tmp = x1Row & element y1 .~ ' '
-    let cells_new_1 = cells_old & element x1 .~ cells_tmp
-    let x2Row = cells_new_1 !! x2
-    let cells_tmp_2 = x2Row & element y2 .~ ' '
-    let cells_new_2 = cells_new_1 & element x2 .~ cells_tmp_2
+    -- let x1Row = cells_old !! x1
+    -- let cells_tmp = x1Row & element y1 .~ ' '
+    -- let cells_new_1 = cells_old & element x1 .~ cells_tmp
+    -- let x2Row = cells_new_1 !! x2
+    -- let cells_tmp_2 = x2Row & element y2 .~ ' '
+    -- let cells_new_2 = cells_new_1 & element x2 .~ cells_tmp_2
+    let blocks_new_1 = blocks_old & element (x1 * width + y1) .~ ' '
+    let blocks_new_2 = blocks_new_1 & element (x2 * width + y2) .~ ' '
+    let from_list = iterate (width+) 0
+    let rb_list = map (dropFrom blocks_new_2) from_list
+    let cells_new_2 = take height (map (take width) rb_list)
     let s_new = s + 1
     g & cells .~ cells_new_2
       & score .~ s_new
+      & blocks .~ blocks_new_2
   | otherwise = g
 
 shuffle :: [a] -> IO [a]
@@ -186,6 +193,15 @@ shuffle xs = do
     n = length xs
     newArray :: Int -> [a] -> IO (IOArray Int a)
     newArray n xs =  newListArray (1,n) xs
+
+shuffleGame :: Game -> IO Game
+shuffleGame g@Game {_blocks = blocks_old} = do
+  b <- shuffle blocks_old
+  let from_list = iterate (width+) 0
+  let rb_list = map (dropFrom b) from_list
+  let cells_new = take height (map (take width) rb_list)
+  return (g & cells .~ cells_new
+            & blocks .~ b)
 
 dropFrom :: [Char] -> Int -> [Char]
 dropFrom l f = drop f l
@@ -212,7 +228,7 @@ initGame = do
         , _dead   = False
         , _paused = True
         , _locked = False
-        -- , _blocks = blocks
+        , _blocks = blocks
         -- , _cells  = [[' ',' ',' ',' '],[' ',' ',' ',' '],['O',' ',' ',' '],['B','O','B',' ']]
         , _cells = cells
         , _focusRing = F.focusRing [PosX1, PosY1, PosX2, PosY2]

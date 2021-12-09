@@ -111,6 +111,7 @@ handleEvent g (T.MouseDown n _ _ (T.Location l)) =
 -- handleEvent g (VtyEvent V.EvMouseUp {}) = continue $ g & lastReportedClick .~ Nothing
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'r') [])) = liftIO (initGame) >>= continue
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 't') [])) = continue $ eliminate g
+handleEvent g (VtyEvent (V.EvKey (V.KChar 's') [])) = liftIO (shuffleGame g) >>= continue
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc []))        = halt g
 handleEvent g (VtyEvent ev) =
