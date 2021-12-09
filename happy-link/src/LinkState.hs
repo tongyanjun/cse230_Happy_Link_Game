@@ -199,7 +199,7 @@ dropFrom l f = drop f l
 initGame :: IO Game
 initGame = do
   (f :| fs) <- fromList . randomRs (V2 0 0, V2 (width - 1) (height - 1)) <$> newStdGen
-  rb <- randomRs (' ', 'Z') <$> newStdGen
+  rb <- randomRs ('A', 'Z') <$> newStdGen
   let b = take (width * height) rb
   let from_list = iterate (width+) 0
   let rb_list = map (dropFrom rb) from_list
