@@ -191,3 +191,101 @@ initGame = do
 
 fromList :: [a] -> Stream a
 fromList = foldr (:|) (error "Streams must be infinite")
+
+-- | Check if two points are linkable
+
+isEmptyRow :: [Char] -> Int -> Int -> Bool
+isEmptyRow nums l h = 
+  if l > h then True -- base
+  else if nums !! l /= ' ' then False -- base
+  else isEmptyRow nums (l + 1) h -- n-1 -> n
+
+isEmptyCol :: [[Char]] -> Int -> Int -> Int -> Bool
+isEmptyCol g col l h =
+  if l > h then True -- base
+  else if g !! l !! col /= ' ' then False -- base
+  else isEmptyCol g col (l + 1) h -- n-1 -> n
+
+-- >>> isLinkable0 [['A','A','B','F'],['B','C','C','F'],['D',' ',' ','D']] 2 0 2 3
+-- True
+--
+isLinkable0 :: [[Char]] -> Int -> Int -> Int -> Int -> Bool
+isLinkable0 g row1 col1 row2 col2 = 
+  if row1 == row2 && col1 == col2 then False -- filters on same non-space character placed outside
+  else if row1 /= row2 && col1 /= col2 then False
+  else if row1 == row2 then isEmptyRow (g !! row1) ((min col1 col2) + 1) ((max col1 col2) - 1)
+  else isEmptyCol g col1 ((min row1 row2) + 1) ((max row1 row2) - 1)
+
+
+-- >>> isLinkable1 [['A','A','B','F'],['B','C','C','D'],['D',' ',' ',' ']] 2 0 1 2
+-- True
+--
+isLinkable1 :: [[Char]] -> Int -> Int -> Int -> Int -> Bool
+isLinkable1 g row1 col1 row2 col2 = 
+  if row1 == row2 && col1 == col2 then False -- filters on same non-space character placed outside
+  else if row1 == row2 || col1 == col2 then False
+  else if g !! row1 !! col2 == ' ' && (isLinkable0 g row1 col1 row1 col2) && (isLinkable0 g row1 col2 row2 col2) then True
+  else if g !! row2 !! col1 == ' ' && (isLinkable0 g row1 col1 row2 col1) && (isLinkable0 g row2 col1 row2 col2) then True
+  else False
+
+
+-- >>> isLinkable2 [['D',' ',' ',' '],['B','C','C','D'],['D',' ',' ',' ']] 0 0 2 0
+-- False
+--
+-- >>> isLinkable2 [['D',' ',' ',' '],['B','C','C',' '],['D',' ',' ',' ']] 0 0 2 0
+-- True
+--
+hasLinkable1Right :: [[Char]] -> Int -> Int -> Int -> Int -> Int -> Bool
+hasLinkable1Right g row1 row2 col2 l h = 
+  if l > h then False -- base
+  else if (g !! row1 !! l /= ' ') then False -- base
+  else if (g !! row1 !! l == ' ') && isLinkable1 g row1 l row2 col2 then True -- base
+  else hasLinkable1Right g row1 row2 col2 (l + 1) h -- n-1 -> n
+
+hasLinkable1Left :: [[Char]] -> Int -> Int -> Int -> Int -> Int -> Bool
+hasLinkable1Left g row1 row2 col2 l h = 
+  if l > h then False -- base
+  else if (g !! row1 !! h /= ' ') then False -- base
+  else if (g !! row1 !! h == ' ') && isLinkable1 g row1 h row2 col2 then True -- base
+  else hasLinkable1Left g row1 row2 col2 l (h - 1) -- n-1 -> n
+
+hasLinkable1Down :: [[Char]] -> Int -> Int -> Int -> Int -> Int -> Bool
+hasLinkable1Down g col1 row2 col2 l h = 
+  if l > h then False -- base
+  else if (g !! l !! col1 /= ' ') then False -- base
+  else if (g !! l !! col1 == ' ') && isLinkable1 g l col1 row2 col2 then True -- base
+  else hasLinkable1Down g col1 row2 col2 (l + 1) h -- n-1 -> n
+
+hasLinkable1Up :: [[Char]] -> Int -> Int -> Int -> Int -> Int -> Bool
+hasLinkable1Up g col1 row2 col2 l h = 
+  if l > h then False -- base
+  else if (g !! h !! col1 /= ' ') then False -- base
+  else if (g !! h !! col1 == ' ') && isLinkable1 g h col1 row2 col2 then True -- base
+  else hasLinkable1Up g col1 row2 col2 l (h - 1) -- n-1 -> n
+
+isLinkable2 :: [[Char]] -> Int -> Int -> Int -> Int -> Bool
+isLinkable2 g row1 col1 row2 col2 = 
+  if row1 == row2 && col1 == col2 then False -- filters on same non-space character placed outside
+  else hasLinkable1Right g row1 row2 col2 (col1 + 1) (length (g !! row1) - 1) || 
+    hasLinkable1Left g row1 row2 col2 0 (col1 - 1) ||
+    hasLinkable1Down g col1 row2 col2 (row1 + 1) (length g - 1) ||
+    hasLinkable1Up g col1 row2 col2 0 (row1 - 1)
+    
+
+-- >>> isLinkable [[' ',' ',' ','D'],[' ','C','C','E'],[' ',' ',' ','D']] 0 3 2 3
+-- True
+--
+-- >>> isLinkable [[' ',' ',' ','D'],['B','C','C','E'],[' ',' ',' ','D']] 0 3 2 3
+-- False
+--
+
+-- >>> isLinkable [['D',' ',' ',' '],['B','C','C','D'],['D',' ',' ',' ']] 0 0 2 0
+-- False
+--
+-- >>> isLinkable [['D',' ',' ',' '],['B','C','C',' '],['D',' ',' ',' ']] 0 0 2 0
+-- True
+--
+isLinkable :: [[Char]] -> Int -> Int -> Int -> Int -> Bool
+isLinkable g row1 col1 row2 col2 = 
+  if row1 == row2 && col1 == col2 || ((g !! row1 !! col1) /= (g !! row2 !! col2)) || (g !! row1 !! col1 == ' ') then False
+  else (isLinkable0 g row1 col1 row2 col2) || (isLinkable1 g row1 col1 row2 col2) || (isLinkable2 g row1 col1 row2 col2)
