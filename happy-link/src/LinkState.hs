@@ -161,12 +161,9 @@ replaceAtIndex n item ls = a ++ (item:b) where (a, (_:b)) = splitAt n ls
 
 link :: (Int, Int) -> (Int, Int) -> Game -> Game
 link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _score = s}
-  | not (isLinkable cells_old x1 y1 x2 y2) = g
-  | otherwise = do
+  | isLinkable cells_old x1 y1 x2 y2 = do
     let x1Row = cells_old !! x1
-    -- let cells_tmp = replaceAtIndex y1 ' ' x1Row
     let cells_tmp = x1Row & element y1 .~ ' '
-    -- let cells_new_1 = replaceAtIndex x1 cells_tmp cells_old
     let cells_new_1 = cells_old & element x1 .~ cells_tmp
     let x2Row = cells_new_1 !! x2
     let cells_tmp_2 = x2Row & element y2 .~ ' '
@@ -174,11 +171,7 @@ link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _score = s}
     let s_new = s + 1
     g & cells .~ cells_new_2
       & score .~ s_new
-  -- let g_new = g & linkable .~ linked
-    --   & linkable .~ True
-    -- g
-  -- else
-  --   g
+  | otherwise = g
 
 shuffle :: [a] -> IO [a]
 shuffle xs = do
