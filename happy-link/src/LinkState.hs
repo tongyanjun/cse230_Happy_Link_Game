@@ -102,7 +102,7 @@ link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _blocks = blocks_old, _score 
     let from_list = iterate (width+) 0
     let rb_list = map (dropFrom blocks_new_2) from_list
     let cells_new_2 = take height (map (take width) rb_list)
-    let s_new = s + 1
+    let s_new = s + 10
     g & cells .~ cells_new_2
       & score .~ s_new
       & blocks .~ blocks_new_2

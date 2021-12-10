@@ -47,7 +47,7 @@ import Lens.Micro
 import Lens.Micro.TH
 
 data Tick = Tick
-data Cell = Empty | Bg Char | Fg Char
+data Cell = Empty | NoFocus Char | Focus Char
 
 -- App definition
 
@@ -86,7 +86,7 @@ handleEvent g (AppEvent Tick)                       = continue $ step g
 handleEvent g (T.MouseDown n _ _ (T.Location l)) =
   case g^.lastReportedClick of
     Nothing -> continue $ g & lastReportedClick .~ Just (n, T.Location (transformCoord l))
-    Just (name, T.Location last_l) -> continue $ link (transformCoord l) last_l g & lastReportedClick .~ Nothing
+    Just (name, T.Location last_l) -> continue $ link (transformCoord l) last_l g & lastReportedClick .~ (Just (n, T.Location (transformCoord l)))
 -- handleEvent g T.MouseUp {} = continue $ g & lastReportedClick .~ Nothing
 -- handleEvent g (VtyEvent (V.EvMouseDown col row button mods)) = continue $ g & click_pos .~ Just (col, row)
 -- handleEvent g (VtyEvent V.EvMouseUp {}) = continue $ g & lastReportedClick .~ Nothing
@@ -115,35 +115,20 @@ handleEvent g _                                     = continue g
 
 drawUI :: Game -> [Widget Name]
 drawUI g =
-  [ C.center $ padRight (Pad 2) (drawStats g) <+> drawGrid g]
+  [ C.center $ padRight (Pad 2) (drawStats g) <+> padRight (Pad 2) (drawGrid g) <+> drawRight g]
 
-drawInput :: Game -> Widget Name
-drawInput g = hLimit 20
-  $ withBorderStyle BS.unicodeBold
-  $ B.borderWithLabel (str "Position")
+
+drawInstructions :: Game -> Widget Name
+drawInstructions g = withBorderStyle BS.unicodeBold
+  $ B.borderWithLabel (str "Instructions")
   $ C.hCenter
   $ padAll 1
-  $ vBox [ str "X of Pos1: " <+> hLimit 30 (vLimit 5 px1)
-         , str "Y of Pos1: " <+> hLimit 30 (vLimit 5 py1)
-         , str "X of Pos2: " <+> hLimit 30 (vLimit 5 px2)
-         , str "Y of Pos2: " <+> hLimit 30 (vLimit 5 py2)
-         ]
-  where
-    px1 = F.withFocusRing (g ^. focusRing) (E.renderEditor (str . unlines)) (g ^. pos_x1)
-    px2 = F.withFocusRing (g ^. focusRing) (E.renderEditor (str . unlines)) (g ^. pos_x2)
-    py1 = F.withFocusRing (g ^. focusRing) (E.renderEditor (str . unlines)) (g ^. pos_y1)
-    py2 = F.withFocusRing (g ^. focusRing) (E.renderEditor (str . unlines)) (g ^. pos_y2)
+  $ str "r -> restart\ns -> shuffle\nq -> quit"
+  
 
 drawStats :: Game -> Widget Name
-drawStats g = hLimit 30
-  $ vBox [ drawScore (g ^. score) -- getter
-         , padTop (Pad 2) $ drawGameOver (g ^. dead)
-         , drawOutput msg
-         ]
-  where
-    msg = case g ^. lastReportedClick of
-            Nothing -> "nothing"
-            Just (name, T.Location l)  -> show name <> " at " <> show l
+drawStats g = hLimit 10
+  $ vBox [ drawScore (g ^. score)] -- getter
 
 drawScore :: Int -> Widget Name
 drawScore n = withBorderStyle BS.unicodeBold
@@ -152,12 +137,23 @@ drawScore n = withBorderStyle BS.unicodeBold
   $ padAll 1
   $ str $ show n
 
-drawOutput :: [Char] -> Widget Name
-drawOutput s = withBorderStyle BS.unicodeBold
+drawOutput :: Game -> Widget Name
+drawOutput g = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "Output")
   $ C.hCenter
   $ padAll 1
-  $ str s
+  $ str msg
+  where
+    msg = case g ^. lastReportedClick of
+            Nothing -> "nothing"
+            Just (name, T.Location l)  -> show name <> " at " <> show l
+
+drawRight :: Game -> Widget Name
+drawRight g = hLimit 20
+  $ vBox [ drawInstructions g
+         , padTop (Pad 1) $ drawGameOver (g ^. dead)
+         , drawOutput g
+         ]
 
 drawGameOver :: Bool -> Widget Name
 drawGameOver dead =
@@ -180,32 +176,44 @@ drawGrid g = withBorderStyle BS.unicodeBold
     drawCoord    = drawCell . cellAt
     cellAt c     = do
       case g ^. lastReportedClick of
-            Nothing -> Bg $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
+            Nothing -> NoFocus $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
             Just (name, T.Location l)  -> do
               if (snd l == (c ^._x)) && (fst l == (height - c ^._y - 1)) then
-                Fg $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
+                Focus $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
               else
-                Bg $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
+                NoFocus $ (g ^. cells) !! (height - c ^._y - 1) !! (c ^._x)
 
+getColorOfChar :: Char -> AttrName
+getColorOfChar c = case c of
+  ' ' -> emptyAttr
+  otherwise -> [redAttr, greenAttr, yellowAttr, blueAttr, magentaAttr, cyanAttr] !! ((ord(c)  - 65) `mod` 6)
 
 drawCell :: Cell -> Widget Name
-drawCell Empty = withAttr emptyAttr $ cw ' '
-drawCell (Bg c) = withAttr bgAttr $ cw c
-drawCell (Fg c) = withAttr fgAttr $ cw c
+drawCell (NoFocus c) = withAttr (getColorOfChar c) $ cw c
+drawCell (Focus c) = withAttr E.editFocusedAttr $ cw c
 
 cw :: Char -> Widget Name
-cw c = str $ if c == ' ' then "   " else " " ++ (c : " ")
+cw c = str $ " " ++ (c : " ")
 
-emptyAttr, bgAttr, fgAttr :: AttrName
+emptyAttr, redAttr, greenAttr, yellowAttr, blueAttr, magentaAttr, cyanAttr :: AttrName
 emptyAttr = "emptyAttr"
-bgAttr = "bgAttr"
-fgAttr = "fgAttr"
-
+redAttr = "redAttr"
+greenAttr = "greenAttr"
+yellowAttr = "yellowAttr"
+blueAttr = "blueAttr"
+magentaAttr = "magentaAttr"
+cyanAttr = "cyanAttr"
 
 theMap :: AttrMap
 theMap = attrMap V.defAttr $
   [ (gameOverAttr, fg V.red `V.withStyle` V.bold)
-  , (fgAttr, V.black `on` V.white)
+  , (emptyAttr, V.white `on` V.black)
+  , (redAttr, V.black `on` V.red)
+  , (greenAttr, V.black `on` V.green)
+  , (yellowAttr, V.black `on`V.yellow)
+  , (blueAttr, V.black `on` V.blue)
+  , (magentaAttr, V.black `on` V.magenta)
+  , (cyanAttr, V.black `on` V.cyan)
   , (E.editAttr, V.white `on` V.black)
   , (E.editFocusedAttr, V.black `on` V.white)
   ]
