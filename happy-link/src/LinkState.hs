@@ -11,7 +11,11 @@ module LinkState
   , lastReportedClick
   , height, width
   , Name(..)
-  , link, isLinkable
+  , link
+  , isLinkable
+  , isLinkable0
+  , isLinkable1
+  , isLinkable2
   , shuffleGame
   ) where
 
@@ -49,7 +53,6 @@ data Game = Game
   { _dead   :: Bool         -- ^ game over flag
   , _paused :: Bool         -- ^ paused flag
   , _score  :: Int          -- ^ score
-  , _locked :: Bool         -- ^ lock to disallow duplicate turns between time steps
   , _blocks :: [Char]
   , _cells  :: [[Char]]
   , _input  :: Bool
@@ -151,7 +154,6 @@ initGame = do
         { _score  = 0
         , _dead   = False
         , _paused = True
-        , _locked = False
         , _blocks = blocks
         -- , _cells  = [[' ',' ',' ',' '],[' ',' ',' ',' '],['O',' ',' ',' '],['B','O','B',' ']]
         , _cells = cells
@@ -254,7 +256,6 @@ isLinkable2 g row1 col1 row2 col2 =
 --
 -- >>> isLinkable [[' ',' ',' ','D'],['B','C','C','E'],[' ',' ',' ','D']] 0 3 2 3
 -- False
---
 
 -- >>> isLinkable [['D',' ',' ',' '],['B','C','C','D'],['D',' ',' ',' ']] 0 0 2 0
 -- False

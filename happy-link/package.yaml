@@ -58,3 +58,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - happy-link
+    - tasty
+    - tasty-hunit

@@ -91,6 +91,8 @@ test-suite happy-link-test
     , microlens
     , microlens-th
     , random
+    , tasty
+    , tasty-hunit
     , text
     , transformers
     , vty

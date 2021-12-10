@@ -78,7 +78,7 @@ main = do
 
 -- Handling events
 transformCoord :: (Int, Int) -> (Int, Int)
-transformCoord (x, y) = (y, (x-1) `div` 3)
+transformCoord (x, y) = (y, x `div` 3)
 
 handleEvent :: Game -> BrickEvent Name Tick -> EventM Name (Next Game)
 handleEvent g (AppEvent Tick)                       = continue $ step g
@@ -168,6 +168,7 @@ gameOverAttr = "gameOver"
 drawGrid :: Game -> Widget Name
 drawGrid g = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "Happy Link")
+  $ padAll 1
   $ clickable Board
   $ vBox rows
   where
