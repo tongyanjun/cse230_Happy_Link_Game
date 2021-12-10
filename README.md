@@ -10,7 +10,7 @@ Shanbin Ke
 Er Zhuo
 
 ## Project Description
-In a limited time, as long as you find all the same letters that can be connected in pairs, each time you find a pair, they will automatically disappear, as long as all the letters are eliminated to win. The so-called being able to connect means: whether horizontally or vertically, the line from one letter to another letter cannot exceed two bends, and the line cannot pass through the letters that have not been eliminated.
+Happy link game is a terminal based small game with a straightforward goal to eliminate all the cells on the board. You need to find all the same letters that can be connected in pairs, each time you find a pair, they will automatically disappear, as long as all the letters are eliminated, you win. The so-called being able to connect means: whether horizontally or vertically, the line from one letter to another letter cannot exceed two bends, and the line cannot pass through the letters that have not been eliminated.
 
                1 2 3 4 5 6 7 8 9 10
                A B Y K L A M K L Z  1
@@ -19,23 +19,19 @@ In a limited time, as long as you find all the same letters that can be connecte
  
 ## Architecture
 #### print_the_game:
-This API is the outer monad to print the current game status to the terminal. It will include the board with existing letters and eliminated ones replaced by specific symbols. It will also print the remaining time and some hint information such as the “Invalid” message when a player choose two letters not valid to link. It will also contain some interactive functions.
+This API is the outer monad to print the current game status to the terminal. It will include the board with existing letters and eliminated ones replaced by an empty position. It will also print some interactive information, like the coordinate of the cell you choose, and one important hint, that is once you choose the wrong letter paired with your former chosen one, it will simply print "nothing" to the screen. The cells will always be filled with different colors according to their letter value to simplify the seach process. It will also provide some basic operation instructions to help for a quick start.
 
 #### check_linkable:
-This is one of the most significant logic in our project that will decide whether two remaining letters on the board can be linked or not. 
-
-#### hint:
-This API will randomly give a pair of letters which can be linked on current board. The function will be mainly built based on the check_linkable function. The API will be called by other functions or by the player when they click the “hint” botton.
+This is one of the most significant logic in our project that will decide whether two remaining letters on the board can be linked or not, that is if there exists a line that can linked the chosen pair together with no more than 2 bends and does not passing throught any existing cell.
 
 #### shuffle:
-This API is aimed to shuffle the remaining letters on the board when no two letters on the board can be linked. The function will be implemented based on “hint” function and will be automatically triggered when the game is “dead”. Player cannot shuffle the board intentionally. The shuffle will only change the relative position of different letters, the “dead place” will not be moved.
+This API is aimed to shuffle the remaining letters on the board when no two letters on the board can be linked further. Most likely, a player will repeat the elimination process normally until the board is empty. But sometimes with a bad initial states and a even worse order of pair choice, a player may encounter the situation that no pairs can will eliminated further, that the game is dead. To make life easier, we introduce the shuffle function the shuffle the entire board. It will re-locate the surviving cells on the board to another random position within the board. And most often, it will introduce new pairs valid to remove.
 
 #### change_board:
-This API is an intermediate function that will change our inner data structures. It will bridge our inner decision making logic and our print out API.
+This APIs are the inner functions that will change our inner data structures. It will bridge our inner decision making logic and our UI functions.
 
 ## Challege:
 + The implementation of the game logic is a little bit complicated. We searched some reference materials to design a relatively efficient algorithm and then implemented the functions in Haskell step by step.
-+ Usually the game will show the linked path when the player finds a valid pair of letters. But printing the path is not that easy in this terminal based game. We are still trying some more presenting methods to make the linked line more vivid and natural. But we cannot promise that we will hold this presenting function at the end.
 
 ## Expectation:
 We expect to meet our goals until the deadline.
