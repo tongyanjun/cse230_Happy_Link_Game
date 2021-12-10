@@ -36,6 +36,7 @@ import Data.Sequence (Seq(..), (<|))
 import qualified Data.Sequence as S
 import Linear.V2 (V2(..), _x, _y)
 import System.Random (Random(..), newStdGen, randomRIO)
+import Prelude
 
 -- Types
 
@@ -339,9 +340,27 @@ isLinkable2 g row1 col1 row2 col2 =
 -- True
 --
 isLinkable :: [[Char]] -> Int -> Int -> Int -> Int -> Bool
-isLinkable g row1 col1 row2 col2 =
+isLinkable gg rrow1 ccol1 rrow2 ccol2 =
   if row1 == row2 && col1 == col2 || ((g !! row1 !! col1) /= (g !! row2 !! col2)) || (g !! row1 !! col1 == ' ') then False
   else (isLinkable0 g row1 col1 row2 col2) || (isLinkable1 g row1 col1 row2 col2) || (isLinkable2 g row1 col1 row2 col2)
+    where g = padding gg
+          row1 = rrow1+1
+          col1 = ccol1+1
+          row2 = rrow2+1
+          col2 = ccol2+1
 
 isLinkableStub :: [[Char]] -> Int -> Int -> Int -> Int -> Bool
 isLinkableStub g row1 col1 row2 col2 = True
+
+padding :: [[Char]] -> [[Char]]
+padding g@(cs:css) = (zeros : (map padSides g)) ++ [zeros]
+  where zeros = buildZeros n
+        n     = (length cs) + 2
+
+padSides :: [Char] -> [Char]
+padSides cs = (' ' : cs) ++ " "
+
+buildZeros :: Int -> [Char]
+buildZeros n = Prelude.replicate n ' '
+
+-- >>> padding [['A', 'B', 'C'], ['A', 'B', 'C'], ['A', 'B', 'C']]
