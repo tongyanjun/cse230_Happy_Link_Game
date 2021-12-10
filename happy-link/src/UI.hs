@@ -16,7 +16,7 @@ import Brick
   , padRight, padLeft, padTop, padAll, Padding(..)
   , withBorderStyle
   , str
-  , attrMap, withAttr, emptyWidget, AttrName, on, fg
+  , attrMap, withAttr, emptyWidget, AttrName, on, fg, bg
   , (<+>)
   )
 import Brick.BChan (newBChan, writeBChan)
@@ -25,6 +25,7 @@ import qualified Brick.Widgets.Border.Style as BS
 import qualified Brick.Widgets.Center as C
 import qualified Graphics.Vty as V
 import Data.Sequence (Seq)
+import Data.Char (ord)
 import qualified Data.Sequence as S
 import Linear.V2 (V2(..), _x, _y)
 import Lens.Micro ((^.))
@@ -144,9 +145,11 @@ foodAttr = "foodAttr"
 emptyAttr = "emptyAttr"
 bgAttr = "bgAttr"
 
+
 theMap :: AttrMap
-theMap = attrMap V.defAttr
+theMap = attrMap V.defAttr $
   [ (snakeAttr, V.blue `on` V.blue)
   , (foodAttr, V.red `on` V.red)
   , (gameOverAttr, fg V.red `V.withStyle` V.bold)
-  ]
+  -- , (bgAttr, bg V.blue)
+  ] -- ++ [([c], [bg V.black, bg V.red, bg V.green, bg V.yellow, bg V.blue, bg V.magenta, bg V.cyan, bg V.white] !! ((ord c - 65) `mod` 8)) | c <- ['A'..'Z']]
