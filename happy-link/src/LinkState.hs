@@ -6,7 +6,7 @@ module LinkState
   , step
   -- , eliminate
   , Game(..)
-  , dead, score, cells, info, linkable
+  , dead, score, cells, info, linkable, countdown, paused, win
   , focusRing, pos_x1, pos_y1, pos_x2, pos_y2
   , lastReportedClick
   , height, width
@@ -53,9 +53,11 @@ data Game = Game
   { _dead   :: Bool         -- ^ game over flag
   , _paused :: Bool         -- ^ paused flag
   , _score  :: Int          -- ^ score
+  , _win :: Bool
   , _blocks :: [Char]
   , _cells  :: [[Char]]
   , _input  :: Bool
+  , _countdown :: Int
   , _focusRing :: F.FocusRing Name
   , _pos_x1 :: E.Editor String Name
   , _pos_y1 :: E.Editor String Name
@@ -78,37 +80,43 @@ makeLenses ''Game
 height, width :: Int
 height = 10
 width = 10
+count = 10
+linkscore = 10
 
 -- Functions
-
 -- | Step forward in time
 step :: Game -> Game
 step s = flip execState s . runMaybeT $ do
   -- Make sure the game isn't paused or over
   MaybeT $ guard . not <$> orM [use paused, use dead]
+  MaybeT . fmap Just $ countdown .= ((s ^. countdown) - 1)
+  die
+
+
+die :: MaybeT (State Game) ()
+die = do
+  MaybeT . fmap guard $ (\x -> x == 0) <$> (use countdown)
+  MaybeT . fmap Just $ dead .= True
 
 
 replaceAtIndex :: Int -> a -> [a] -> [a]
 replaceAtIndex n item ls = a ++ (item:b) where (a, (_:b)) = splitAt n ls
 
+
 link :: (Int, Int) -> (Int, Int) -> Game -> Game
 link (x1, y1) (x2, y2) g@Game {_cells = cells_old, _blocks = blocks_old, _score = s}
   | isLinkable cells_old x1 y1 x2 y2 = do
-    -- let x1Row = cells_old !! x1
-    -- let cells_tmp = x1Row & element y1 .~ ' '
-    -- let cells_new_1 = cells_old & element x1 .~ cells_tmp
-    -- let x2Row = cells_new_1 !! x2
-    -- let cells_tmp_2 = x2Row & element y2 .~ ' '
-    -- let cells_new_2 = cells_new_1 & element x2 .~ cells_tmp_2
     let blocks_new_1 = blocks_old & element (x1 * width + y1) .~ ' '
     let blocks_new_2 = blocks_new_1 & element (x2 * width + y2) .~ ' '
     let from_list = iterate (width+) 0
     let rb_list = map (dropFrom blocks_new_2) from_list
     let cells_new_2 = take height (map (take width) rb_list)
-    let s_new = s + 10
+    let s_new = s + linkscore
     g & cells .~ cells_new_2
       & score .~ s_new
       & blocks .~ blocks_new_2
+      & countdown .~ count
+      & win .~ (s_new == ((length (g ^. blocks)) `div` 2) * linkscore)
   | otherwise = g
 
 shuffle :: [a] -> IO [a]
@@ -137,6 +145,34 @@ shuffleGame g@Game {_blocks = blocks_old} = do
 dropFrom :: [Char] -> Int -> [Char]
 dropFrom l f = drop f l
 
+
+-- congratulations :: [[Char]]
+-- congratulations = [
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|'],
+--   ['\\', '/','\\','/',' ','|', ' ', '|','\\','|']
+-- ]
+
+congratulations :: [[Char]]
+congratulations = [
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!'],
+  ['Y', 'O', 'U', ' ', ' ', ' ', 'W', 'I', 'N', '!']]
+
 -- | Initialize a paused game with random food location
 initGame :: IO Game
 initGame = do
@@ -153,10 +189,11 @@ initGame = do
       g  = Game
         { _score  = 0
         , _dead   = False
-        , _paused = True
+        , _paused = False
+        , _win = False
         , _blocks = blocks
-        -- , _cells  = [[' ',' ',' ',' '],[' ',' ',' ',' '],['O',' ',' ',' '],['B','O','B',' ']]
         , _cells = cells
+        , _countdown = count
         , _focusRing = F.focusRing [PosX1, PosY1, PosX2, PosY2]
         , _pos_x1 = E.editor PosX1 (Just 2) ""
         , _pos_y1 = E.editor PosY1 (Just 2) ""

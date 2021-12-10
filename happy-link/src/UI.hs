@@ -67,7 +67,7 @@ main = do
   chan <- newBChan 10
   forkIO $ forever $ do
     writeBChan chan Tick
-    threadDelay 100000 -- decides how fast your game moves
+    threadDelay 1000000 -- decides how fast your game moves
   g <- initGame
   let buildVty = do
           v <- V.mkVty =<< V.standardIOConfig
@@ -82,33 +82,15 @@ transformCoord (x, y) = (y, x `div` 3)
 
 handleEvent :: Game -> BrickEvent Name Tick -> EventM Name (Next Game)
 handleEvent g (AppEvent Tick)                       = continue $ step g
--- handleEvent g (VtyEvent (V.EvKey (V.KChar 'h') [])) = continue $ g & score .~ (read (unlines $ E.getEditContents $ g^.pos_x1)::Int)
-handleEvent g (T.MouseDown n _ _ (T.Location l)) =
+handleEvent g (T.MouseDown n _ _ (T.Location l)) = if (g ^. paused) || (g ^. dead) then continue g else continue $
   case g^.lastReportedClick of
-    Nothing -> continue $ g & lastReportedClick .~ Just (n, T.Location (transformCoord l))
-    Just (name, T.Location last_l) -> continue $ link (transformCoord l) last_l g & lastReportedClick .~ (Just (n, T.Location (transformCoord l)))
--- handleEvent g T.MouseUp {} = continue $ g & lastReportedClick .~ Nothing
--- handleEvent g (VtyEvent (V.EvMouseDown col row button mods)) = continue $ g & click_pos .~ Just (col, row)
--- handleEvent g (VtyEvent V.EvMouseUp {}) = continue $ g & lastReportedClick .~ Nothing
+    Nothing -> g & lastReportedClick .~ Just (n, T.Location (transformCoord l))
+    Just (name, T.Location last_l) -> link (transformCoord l) last_l g & lastReportedClick .~ (Just (n, T.Location (transformCoord l)))
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'r') [])) = liftIO (initGame) >>= continue
 handleEvent g (VtyEvent (V.EvKey (V.KChar 's') [])) = liftIO (shuffleGame g) >>= continue
+handleEvent g (VtyEvent (V.EvKey (V.KChar 'p') [])) = continue $ g & paused .~ (not (g ^. paused))
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc []))        = halt g
-handleEvent g (VtyEvent ev) =
-    case ev of
-        V.EvKey V.KEsc [] -> halt g
-        V.EvKey (V.KChar '\t') [] -> continue $ g & focusRing %~ F.focusNext
-        V.EvKey V.KBackTab [] -> continue $ g & focusRing %~ F.focusPrev
-        V.EvKey V.KUp [] -> continue $ g & focusRing %~ F.focusPrev
-        V.EvKey V.KDown [] -> continue $ g & focusRing %~ F.focusNext
-        -- V.EvKey V.KEnter [] -> continue $ g & focusRing %~ F.focusNext
-
-        _ -> continue =<< case F.focusGetCurrent (g^.focusRing) of
-               Just PosX1 -> T.handleEventLensed g pos_x1 E.handleEditorEvent ev
-               Just PosY1 -> T.handleEventLensed g pos_y1 E.handleEditorEvent ev
-               Just PosX2 -> T.handleEventLensed g pos_x2 E.handleEditorEvent ev
-               Just PosY2 -> T.handleEventLensed g pos_y2 E.handleEditorEvent ev
-               Nothing -> return g
 handleEvent g _                                     = continue g
 
 -- Drawing
@@ -123,12 +105,12 @@ drawInstructions g = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "Instructions")
   $ C.hCenter
   $ padAll 1
-  $ str "r -> restart\ns -> shuffle\nq -> quit"
+  $ str $ "r -> restart\ns -> shuffle\nq -> quit\np -> pause"
   
 
 drawStats :: Game -> Widget Name
-drawStats g = hLimit 10
-  $ vBox [ drawScore (g ^. score)] -- getter
+drawStats g = hLimit 12
+  $ vBox [ drawScore (g ^. score), drawCountDown (g ^. countdown), drawStatus g] -- getter
 
 drawScore :: Int -> Widget Name
 drawScore n = withBorderStyle BS.unicodeBold
@@ -136,6 +118,20 @@ drawScore n = withBorderStyle BS.unicodeBold
   $ C.hCenter
   $ padAll 1
   $ str $ show n
+
+drawCountDown :: Int -> Widget Name
+drawCountDown n = withBorderStyle BS.unicodeBold
+  $ B.borderWithLabel (str "CountDown")
+  $ C.hCenter
+  $ padAll 1
+  $ str $ show n
+
+drawStatus :: Game -> Widget Name
+drawStatus g = withBorderStyle BS.unicodeBold
+  $ B.borderWithLabel (str "Status")
+  $ C.hCenter
+  $ padAll 1
+  $ str $ if (g ^. dead) then "dead" else if (g ^. paused) then "paused" else "running"
 
 drawOutput :: Game -> Widget Name
 drawOutput g = withBorderStyle BS.unicodeBold
@@ -151,18 +147,17 @@ drawOutput g = withBorderStyle BS.unicodeBold
 drawRight :: Game -> Widget Name
 drawRight g = hLimit 20
   $ vBox [ drawInstructions g
-         , padTop (Pad 1) $ drawGameOver (g ^. dead)
+         , drawGameOverOrWin g
          , drawOutput g
          ]
 
-drawGameOver :: Bool -> Widget Name
-drawGameOver dead =
-  if dead
+drawGameOverOrWin :: Game -> Widget Name
+drawGameOverOrWin g =
+  if g ^. dead
      then withAttr gameOverAttr $ C.hCenter $ str "GAME OVER"
-     else emptyWidget
-
-gameOverAttr :: AttrName
-gameOverAttr = "gameOver"
+     else if g ^. win
+        then withAttr gameWinAttr $ C.hCenter $ str "YOU WIN"
+        else emptyWidget
 
 
 drawGrid :: Game -> Widget Name
@@ -205,9 +200,16 @@ blueAttr = "blueAttr"
 magentaAttr = "magentaAttr"
 cyanAttr = "cyanAttr"
 
+
+gameOverAttr, gameWinAttr :: AttrName
+gameOverAttr = "gameOver"
+gameWinAttr = "gameWin"
+
+
 theMap :: AttrMap
 theMap = attrMap V.defAttr $
   [ (gameOverAttr, fg V.red `V.withStyle` V.bold)
+  , (gameWinAttr, fg V.red `V.withStyle` V.bold)
   , (emptyAttr, V.white `on` V.black)
   , (redAttr, V.black `on` V.red)
   , (greenAttr, V.black `on` V.green)
