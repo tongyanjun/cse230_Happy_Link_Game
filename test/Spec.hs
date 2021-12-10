@@ -25,6 +25,6 @@ isLinkable2Test = testGroup "Testing isLinkable2"
 isLinkableTest :: TestTree
 isLinkableTest = testGroup "Testing isLinkable"
   [testCase "Testing isLinkable" $ assertBool "0" (isLinkable [[' ',' ',' ','D'],[' ','C','C','E'],[' ',' ',' ','D']] 0 3 2 3),
-   testCase "Testing isLinkable" $ assertBool "1" $ not (isLinkable [[' ',' ',' ','D'],['B','C','C','E'],[' ',' ',' ','D']] 0 3 2 3),
-   testCase "Testing isLinkable" $ assertBool "2" $ not (isLinkable [['D',' ',' ',' '],['B','C','C','D'],['D',' ',' ',' ']] 0 0 2 0),
+   testCase "Testing isLinkable" $ assertBool "1" (isLinkable [[' ',' ',' ','D'],['B','C','C','E'],[' ',' ',' ','D']] 0 3 2 3),
+   testCase "Testing isLinkable" $ assertBool "2" $ not (isLinkable [['Q','D','Q',' '],['B','C','C','F'],['D',' ',' ',' ']] 0 1 2 0),
    testCase "Testing isLinkable" $ assertBool "3" (isLinkable [['D',' ',' ',' '],['B','C','C',' '],['D',' ',' ',' ']] 0 0 2 0)]
