@@ -16,12 +16,7 @@ import Brick
   , padRight, padLeft, padTop, padAll, Padding(..)
   , withBorderStyle
   , str
-<<<<<<< HEAD
   , attrMap, withAttr, emptyWidget, AttrName, on, fg, bg
-=======
-  , lookupExtent
-  , attrMap, withAttr, emptyWidget, AttrName, on, fg
->>>>>>> 59c6b9214bac5cfcd770d94a7241456a093af6a6
   , (<+>)
   )
 import Brick.BChan (newBChan, writeBChan)
