@@ -46,20 +46,8 @@ import Linear.V2 (V2(..), _x, _y)
 import Lens.Micro
 import Lens.Micro.TH
 
--- Types
-
--- | Ticks mark passing of time
---
--- This is our custom event that will be constantly fed into the app.
 data Tick = Tick
-
--- | Named resources
---
--- Not currently used, but will be easier to refactor
--- if we call this "Name" now.
--- type Name = ()
-
-data Cell = Snake | Food | Empty | Bg Char | Fg Char
+data Cell = Empty | Bg Char | Fg Char
 
 -- App definition
 
@@ -94,13 +82,6 @@ transformCoord (x, y) = (y, (x-1) `div` 3)
 
 handleEvent :: Game -> BrickEvent Name Tick -> EventM Name (Next Game)
 handleEvent g (AppEvent Tick)                       = continue $ step g
--- handleEvent g (VtyEvent (V.EvKey V.KUp []))         = continue $ turn North g
--- handleEvent g (VtyEvent (V.EvKey V.KDown []))       = continue $ turn South g
--- handleEvent g (VtyEvent (V.EvKey V.KRight []))      = continue $ turn East g
--- handleEvent g (VtyEvent (V.EvKey V.KLeft []))       = continue $ turn West g
--- handleEvent g (VtyEvent (V.EvKey (V.KChar 'k') [])) = continue $ turn North g
--- handleEvent g (VtyEvent (V.EvKey (V.KChar 'j') [])) = continue $ turn South g
--- handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = continue $ turn East g
 -- handleEvent g (VtyEvent (V.EvKey (V.KChar 'h') [])) = continue $ g & score .~ (read (unlines $ E.getEditContents $ g^.pos_x1)::Int)
 handleEvent g (T.MouseDown n _ _ (T.Location l)) =
   case g^.lastReportedClick of
@@ -110,7 +91,6 @@ handleEvent g (T.MouseDown n _ _ (T.Location l)) =
 -- handleEvent g (VtyEvent (V.EvMouseDown col row button mods)) = continue $ g & click_pos .~ Just (col, row)
 -- handleEvent g (VtyEvent V.EvMouseUp {}) = continue $ g & lastReportedClick .~ Nothing
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'r') [])) = liftIO (initGame) >>= continue
--- handleEvent g (VtyEvent (V.EvKey (V.KChar 't') [])) = continue $ eliminate g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 's') [])) = liftIO (shuffleGame g) >>= continue
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc []))        = halt g
@@ -133,27 +113,9 @@ handleEvent g _                                     = continue g
 
 -- Drawing
 
--- data Name = Edit1
---           | Edit2
---           deriving (Ord, Show, Eq)
-
--- data St =
---     St { _focusRing :: F.FocusRing Name
---        , _edit1 :: E.Editor String Name
---        , _edit2 :: E.Editor String Name
---        }
-
--- initialState :: St
--- initialState =
---     St (F.focusRing [Edit1, Edit2])
---        (E.editor Edit1 Nothing "")
---        (E.editor Edit2 (Just 2) "")
-
--- makeLenses ''St
-
 drawUI :: Game -> [Widget Name]
 drawUI g =
-  [ C.center $ padRight (Pad 2) (drawStats g) <+> drawGrid g <+> drawInput g]
+  [ C.center $ padRight (Pad 2) (drawStats g) <+> drawGrid g]
 
 drawInput :: Game -> Widget Name
 drawInput g = hLimit 20
@@ -227,21 +189,14 @@ drawGrid g = withBorderStyle BS.unicodeBold
 
 
 drawCell :: Cell -> Widget Name
-drawCell Snake = withAttr snakeAttr cw1
-drawCell Food  = withAttr foodAttr cw1
-drawCell Empty = withAttr emptyAttr cw1
+drawCell Empty = withAttr emptyAttr $ cw ' '
 drawCell (Bg c) = withAttr bgAttr $ cw c
 drawCell (Fg c) = withAttr fgAttr $ cw c
 
 cw :: Char -> Widget Name
 cw c = str $ if c == ' ' then "   " else " " ++ (c : " ")
 
-cw1 :: Widget Name
-cw1 = str "   "
-
-snakeAttr, foodAttr, emptyAttr, bgAttr, fgAttr :: AttrName
-snakeAttr = "snakeAttr"
-foodAttr = "foodAttr"
+emptyAttr, bgAttr, fgAttr :: AttrName
 emptyAttr = "emptyAttr"
 bgAttr = "bgAttr"
 fgAttr = "fgAttr"
@@ -249,10 +204,8 @@ fgAttr = "fgAttr"
 
 theMap :: AttrMap
 theMap = attrMap V.defAttr $
-  [ (snakeAttr, V.blue `on` V.blue)
-  , (foodAttr, V.red `on` V.red)
-  , (gameOverAttr, fg V.red `V.withStyle` V.bold)
-  , (fgAttr,            V.black `on` V.white)
-  , (E.editAttr,                   V.white `on` V.black)
-  , (E.editFocusedAttr,            V.black `on` V.white)
+  [ (gameOverAttr, fg V.red `V.withStyle` V.bold)
+  , (fgAttr, V.black `on` V.white)
+  , (E.editAttr, V.white `on` V.black)
+  , (E.editFocusedAttr, V.black `on` V.white)
   ]
