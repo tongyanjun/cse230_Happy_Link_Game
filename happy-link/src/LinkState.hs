@@ -56,7 +56,6 @@ data Game = Game
   , _win :: Bool
   , _blocks :: [Char]
   , _cells  :: [[Char]]
-  , _input  :: Bool
   , _countdown :: Int
   , _focusRing :: F.FocusRing Name
   , _pos_x1 :: E.Editor String Name
@@ -88,7 +87,7 @@ linkscore = 10
 step :: Game -> Game
 step s = flip execState s . runMaybeT $ do
   -- Make sure the game isn't paused or over
-  MaybeT $ guard . not <$> orM [use paused, use dead]
+  MaybeT $ guard . not <$> orM [use paused, use dead, use win]
   MaybeT . fmap Just $ countdown .= ((s ^. countdown) - 1)
   die
 

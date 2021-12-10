@@ -153,10 +153,10 @@ drawRight g = hLimit 20
 
 drawGameOverOrWin :: Game -> Widget Name
 drawGameOverOrWin g =
-  if g ^. dead
-     then withAttr gameOverAttr $ C.hCenter $ str "GAME OVER"
-     else if g ^. win
-        then withAttr gameWinAttr $ C.hCenter $ str "YOU WIN"
+  if g ^. win
+     then withAttr gameWinAttr $ C.hCenter $ str "YOU WIN"
+     else if g ^. dead
+        then withAttr gameOverAttr $ C.hCenter $ str "GAME OVER"
         else emptyWidget
 
 
