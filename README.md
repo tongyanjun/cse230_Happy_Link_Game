@@ -1,5 +1,5 @@
 # cse230_Happy_Link_Game
-
+![](https://img.ams1.imgbed.xyz/2021/12/10/oM21u.png)
 ## Group Members
 Yanjun Tong
 
